@@ -48,19 +48,19 @@ def read_data_meta(path):
     try:
         rocking_motor = "gonphi"
         rocking_angles = h5file['entry']['measurement'][rocking_motor][()]
-        print("Rocking motor is %s"%rocking_motor)
+        print("-- Rocking motor is %s --"%rocking_motor)
     except:
         try:
             rocking_motor = "gontheta"
             rocking_angles = h5file['entry']['measurement'][rocking_motor][()]
-            print("Rocking motor is %s"%rocking_motor)
+            print("-- Rocking motor is %s --"%rocking_motor)
         except:
-            print("No rocking motor positions, pass...")
+            print("-- No rocking motor positions, pass or specify it separately! --")
             rocking_angles = []
             rocking_motor = []
             pass
 
-    return command, motor_positions, rocking_motor, rocking_angles, scan_position_x, scan_position_z, incoming_intensity
+    return command, motor_positions, rocking_motor, rocking_angles, scan_position_x, scan_position_y, scan_position_z, incoming_intensity
 
 def read_data_merlin(data_path,roi):
     h5file = h5py.File(data_path, 'r')
