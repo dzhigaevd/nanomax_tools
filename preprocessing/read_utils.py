@@ -26,23 +26,23 @@ def read_data_meta(path):
     try:
         scan_position_x = h5file['entry']['measurement']['pseudo']['x'][()]
     except:
-        print("-- Current dataset has no x lateral scanning, continue with single position --")
+        print("-- Current dataset has no x lateral scanning, continue with single position")
         scan_position_x = []
     try:
         scan_position_y = h5file['entry']['measurement']['pseudo']['y'][()]
     except:
-        print("-- Current dataset has no y lateral scanning, continue with single position --")
+        print("-- Current dataset has no y lateral scanning, continue with single position")
         scan_position_y = []
     try:
         scan_position_z = h5file['entry']['measurement']['pseudo']['z'][()]
     except:
-        print("-- Current dataset has no z lateral scanning, continue with single position --")
+        print("-- Current dataset has no z lateral scanning, continue with single position")
         scan_position_z = []
     
     try:
         incoming_intensity = h5file['entry']['measurement']['alba2']['1'][()]
     except:
-        print("-- Normalization data is not found, consider manual normalization, continue without it --")
+        print("-- Normalization data is not found, consider manual normalization, continue without it")
         incoming_intensity = []
     
     try:
@@ -53,9 +53,9 @@ def read_data_meta(path):
         try:
             rocking_motor = "gontheta"
             rocking_angles = h5file['entry']['measurement'][rocking_motor][()]
-            print("-- Rocking motor is %s --"%rocking_motor)
+            print("-- Rocking motor is %s"%rocking_motor)
         except:
-            print("-- No rocking motor positions, pass or specify it separately! --")
+            print("-- No rocking motor positions, pass or specify it separately!")
             rocking_angles = []
             rocking_motor = []
             pass
@@ -72,7 +72,6 @@ def read_data_xspress3(data_path,roi):
     entry_keys = list(h5file['/'])
     ii = 0
     nPoints = len(h5file[entry_keys[0]]['measurement']['xspress3']['data'][()])
-#    nLines  = np.shape(entry_keys)
     data = np.zeros((nPoints, len(entry_keys)))
     for key in entry_keys:
         data_temp = h5file[key]['measurement']['xspress3']['data'][:,3,roi[0]:roi[1]]
@@ -81,14 +80,6 @@ def read_data_xspress3(data_path,roi):
     return data
 
 def read_mask(data_path,roi):
-#    h5file = h5py.File(data_path, 'r')
-#    mask = h5file['mask'][()]
-#        mask1 = np.sum(data_xrd,0)>5
-#    mask1 = np.abs(mask1-1)
-#    
-#    mask = mask+mask1
-#    mask = mask>1
-#    
     data = np.load(data_path)
     mask = data['mask'][roi[0]:roi[1],roi[2]:roi[3]]
     return mask
