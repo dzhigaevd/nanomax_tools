@@ -10,31 +10,13 @@ import scipy.io as scio
 import numpy as np
 from tifffile import imsave
 
-def save_data_xrd(save_path, save_type, \
-	data_xrd, xrd_roi, motor_positions, \
-	rocking_motor,	rocking_angles, \
-	scan_position_x, scan_position_y, scan_position_z):
-	
-	if save_type == "mat":
-	    # Permute arrays, to have the rocking direction as a last index
-	    data_xrd = np.transpose(np.single(data_xrd),(1,2,0))	    
-	    data_dic = {"data": data_xrd,\
-	                "command": command, \
-	                "motor_positions":motor_positions,\
-	                "rocking_motor":rocking_motor, \
-	                "rocking_angles":rocking_angles}
-	    scio.savemat(save_path, {'scan': data_dic}, do_compression=True, oned_as="column")
+def save_data_xrd(save_path, save_type, save_dictionary):
+	if save_type == "mat":	        	  
+	    scio.savemat(save_path, {'scan': save_dictionary}, do_compression=True, oned_as="column")
 	    print(('++ Saved XRD and meta data to %s')%(save_path))
 
 	elif save_type == "npz": 
-		np.savez_compressed(save_path, data_xrd = data_xrd, \
-    							xrd_roi = xrd_roi, \
-    							motor_positions = motor_positions, \
-    							rocking_motor = rocking_motor,\
-    							rocking_angles = rocking_angles, \
-    							scan_position_x = scan_position_x, \
-    							scan_position_y = scan_position_y, \
-    							scan_position_z = scan_position_z)
+  		np.savez_compressed(save_path, save_dictionary)
 		print(('++ Saved XRD and meta data to %s')%(save_path))
 	else:
 		error('-- Unrecognized save type! Do nothing ...')
