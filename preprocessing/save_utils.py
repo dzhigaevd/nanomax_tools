@@ -18,7 +18,7 @@ def save_data(save_path, save_type, save_dictionary):
   		np.savez_compressed(save_path, save_dictionary)
   		print(('++ Saved XRD and meta data to %s')%(save_path))
 	elif save_type == 'tif':		
-		imsave(save_path, data_xrf)
+		imsave(save_path, save_dictionary)
 		print(('++ Saved XRF data to %s')%(save_path))	
 	else:
 		print('-- Unrecognized save type! Do nothing ...')
