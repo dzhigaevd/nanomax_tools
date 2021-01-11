@@ -45,10 +45,4 @@ def save_data_xrf(save_path, data_xrf):
 	print(('++ Saved XRF data to %s')%(save_path))
 
 def convert_to_single_npz(path, scan_numbers):
-	# Load all 
-
-def save_bin_data_nanomax(save_path,data):
-    fid = open(save_path,'w+b')
-    fid.write(data)
-    fid.close()
-
+	# Load all
