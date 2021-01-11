@@ -14,10 +14,9 @@ def save_data_xrd(save_path, save_type, save_dictionary):
 	if save_type == "mat":	        	  
 	    scio.savemat(save_path, {'scan': save_dictionary}, do_compression=True, oned_as="column")
 	    print(('++ Saved XRD and meta data to %s')%(save_path))
-
 	elif save_type == "npz": 
   		np.savez_compressed(save_path, save_dictionary)
-		print(('++ Saved XRD and meta data to %s')%(save_path))
+  		print(('++ Saved XRD and meta data to %s')%(save_path))
 	else:
 		error('-- Unrecognized save type! Do nothing ...')
 
