@@ -11,6 +11,8 @@ Created on Fri Oct 23 22:00:25 2020
 
 from scipy.interpolate import griddata as gd
 
+def get_qspace_coordinates():
+	
 scan_numbers = 109:128;
 
 % Processing path
