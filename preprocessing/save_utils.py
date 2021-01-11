@@ -23,8 +23,8 @@ def save_data_xrd(save_path, save_type, \
 	                "motor_positions":motor_positions,\
 	                "rocking_motor":rocking_motor, \
 	                "rocking_angles":rocking_angles}
-	    scio.savemat(save_path, {'scan': data_dic}, do_compression=True, oned_as="column") 
-		print(('++ Saved XRD and meta data to %s')%(save_path))
+	    scio.savemat(save_path, {'scan': data_dic}, do_compression=True, oned_as="column")
+	    print(('++ Saved XRD and meta data to %s')%(save_path))
 
 	elif save_type == "npz": 
 		np.savez_compressed(save_path, data_xrd = data_xrd, \
