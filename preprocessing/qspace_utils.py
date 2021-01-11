@@ -6,9 +6,11 @@ Created on Fri Oct 23 22:00:25 2020
 @author: dzhigd
 """
 
-%% Select the rocking curve
-clear;
-close all;
+# Select the rocking curve
+
+
+from scipy.interpolate import griddata as gd
+
 scan_numbers = 109:128;
 
 % Processing path
