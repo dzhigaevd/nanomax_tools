@@ -41,8 +41,8 @@ def save_data_xrd(save_path, save_type, \
 
 def save_data_xrf(save_path, data_xrf):
 	data_xrf = np.float32(data_xrf/np.max(data_xrf))
-    imsave(save_path, data_xrf)
-    print(('++ Saved XRF data to %s')%(save_path))
+	imsave(save_path, data_xrf)
+	print(('++ Saved XRF data to %s')%(save_path))
 
 def convert_to_single_npz(path, scan_numbers):
 	# Load all 
