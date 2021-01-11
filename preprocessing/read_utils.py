@@ -28,11 +28,13 @@ def read_data_meta(path):
     except:
         print("-- Current dataset has no x lateral scanning, continue with single position")
         scan_position_x = []
+        
     try:
         scan_position_y = h5file['entry']['measurement']['pseudo']['y'][()]
     except:
         print("-- Current dataset has no y lateral scanning, continue with single position")
         scan_position_y = []
+
     try:
         scan_position_z = h5file['entry']['measurement']['pseudo']['z'][()]
     except:
