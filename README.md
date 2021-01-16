@@ -1,4 +1,4 @@
-# nanomax_tools
+# Nanomax Python Tools for Users
 A toolbox for analysis of the data from NanoMax beamline, MAX IV (Sweden)
 
 Download latest Version from Github:
