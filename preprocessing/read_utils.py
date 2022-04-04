@@ -64,21 +64,23 @@ def read_data_meta(path):
 
     return command, motor_positions, rocking_motor, rocking_angles, scan_position_x, scan_position_y, scan_position_z, incoming_intensity
 
-def read_data_merlin(data_path,roi):
+def read_data_merlin(data_path,roi=None):
     h5file = h5py.File(data_path, 'r')
-    data = h5file['entry']['measurement']['Merlin']['data'][:,roi[0]:roi[1],roi[2]:roi[3]]       
+    if roi:
+        data = h5file['entry']['measurement']['merlin']['frames'][:,[0]:roi[1],roi[2]:roi[3]]       
+    else:
+        data = h5file['entry']['measurement']['merlin']['frames'][()]
     return data
 
-def read_data_xspress3(data_path,roi):
-    h5file = h5py.File(data_path, 'r')
-    entry_keys = list(h5file['/'])
-    ii = 0
-    nPoints = len(h5file[entry_keys[0]]['measurement']['xspress3']['data'][()])
-    data = np.zeros((nPoints, len(entry_keys)))
-    for key in entry_keys:
-        data_temp = h5file[key]['measurement']['xspress3']['data'][:,3,roi[0]:roi[1]]
-        data[:,ii] = np.sum(data_temp,1)       
-        ii = ii+1
+def read_data_xspress3(data_path,roi=None):
+    module = 3 # hardcoded for 4.04.2022
+    h5file = h5py.File(data_path, 'r+')
+    if roi:
+        data = h5file['entry']['measurement']['xspress3']['frames'][:,module,roi[0]:roi[1]]
+        data = np.sum(data,1)
+    else:
+        data = h5file['entry']['measurement']['xspress3']['frames'][:,module,:]
+    print('Use XRF module #'+module)
     return data
 
 def read_mask(data_path,roi):
