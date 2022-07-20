@@ -67,7 +67,7 @@ def read_data_meta(path):
 def read_data_merlin(data_path,roi=None):
     h5file = h5py.File(data_path, 'r')
     if roi:
-        data = h5file['entry']['measurement']['merlin']['frames'][:,[0]:roi[1],roi[2]:roi[3]]       
+        data = h5file['entry']['measurement']['merlin']['frames'][:,roi[0]:roi[1],roi[2]:roi[3]]       
     else:
         data = h5file['entry']['measurement']['merlin']['frames'][()]
     return data
