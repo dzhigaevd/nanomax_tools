@@ -34,7 +34,7 @@ def get_overlay_coordinates(n_horizontal,n_vertical,shift):
                     t.append(str(v[jj,ii]+shift[kk,0])+','+str(h[jj,ii]+shift[kk,1]))
         shifted_coordinates.append(t)
     
-    # Referemce 2D map coordinates
+    # Reference 2D map coordinates
     reference_coordinates = shifted_coordinates[0].copy()
 
     # Find intersection
@@ -66,7 +66,8 @@ def get_overlay_coordinates(n_horizontal,n_vertical,shift):
         n_vertical_new = np.max(c_list[:,0])-np.min(c_list[:,0])+1
         n_horizontal_new = np.max(c_list[:,1])-np.min(c_list[:,1])+1
     else:
-        ValueError
+        print('There is no overlap between all 2D maps! Stop here.')
+        raise ValueError
         
     return data_coordinates, n_vertical_new, n_horizontal_new
     
