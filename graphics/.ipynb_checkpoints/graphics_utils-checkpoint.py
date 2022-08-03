@@ -107,3 +107,20 @@ def show_q_space_projections(qx,qy,qz,data):
     
     plt.figure(num=3)
     plt.imshow(np.sum(qspace_interpolated,axis=2))
+    
+def imagesc(image, cmap=None, xlabel=None, ylabel=None, title=None):
+    plt.figure()
+    plt.imshow(image)    
+    if cmap!=None:
+        plt.set_cmap(cmap)
+    else:
+        plt.set_cmap('turbo') 
+        
+    if xlabel!=None:
+        plt.xlabel(xlabel)    
+    if ylabel!=None:
+        plt.ylabel(ylabel)        
+    plt.colorbar()    
+    if title!=None:
+        plt.title(title)        
+    plt.show()

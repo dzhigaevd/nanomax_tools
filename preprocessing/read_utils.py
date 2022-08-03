@@ -64,10 +64,13 @@ def read_data_meta(path):
 
     return command, motor_positions, rocking_motor, rocking_angles, scan_position_x, scan_position_y, scan_position_z, incoming_intensity
 
-def read_data_merlin(data_path,roi=None):
+def read_data_merlin(data_path,roi=None,point_list=None):
     h5file = h5py.File(data_path, 'r')
     if roi:
-        data = h5file['entry']['measurement']['merlin']['frames'][:,roi[0]:roi[1],roi[2]:roi[3]]       
+        if point_list:
+            data = h5file['entry']['measurement']['merlin']['frames'][point_list,roi[0]:roi[1],roi[2]:roi[3]]       
+        else:
+            data = h5file['entry']['measurement']['merlin']['frames'][:,roi[0]:roi[1],roi[2]:roi[3]]       
     else:
         data = h5file['entry']['measurement']['merlin']['frames'][()]
     return data

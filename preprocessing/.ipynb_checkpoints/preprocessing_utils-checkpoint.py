@@ -11,6 +11,65 @@ import numpy as np
 from bcdi.graph import graph_utils as gu
 from bcdi.utils import utilities as util
 
+def get_overlay_coordinates(n_horizontal,n_vertical,shift):
+    """This function calculates linear coordinates of the scan-points in the area of overlap between angular positions after calculation of the shift that has to be read from h5 dataset
+    Input: 
+    :retun: size of a new map (vertical, horizontal), list of scan point coordinates to be read from h5 dataset for each shift value
+    """
+    
+    shift.insert(0, [0,0])
+    shift = np.array(shift)
+    n_angles = len(shift)
+    
+    hv = np.arange(0,n_horizontal)
+    vv = np.arange(0,n_vertical)
+    h,v = np.meshgrid(hv,vv)
+    
+    # Add shift to every coordinate of the 2D scan
+    shifted_coordinates = []
+    for kk in range(len(shift)):
+        t = []
+        for jj in range(n_vertical):
+            for ii in range(n_horizontal):                         
+                    t.append(str(v[jj,ii]+shift[kk,0])+','+str(h[jj,ii]+shift[kk,1]))
+        shifted_coordinates.append(t)
+    
+    # Referemce 2D map coordinates
+    reference_coordinates = shifted_coordinates[0].copy()
+
+    # Find intersection
+    for ii in range(len(shifted_coordinates)):
+        t_set = frozenset(shifted_coordinates[ii])
+        t = [x.split(',') for x in reference_coordinates if x in t_set]
+        reference_coordinates = []
+        for ii in range(len(t)):
+            reference_coordinates.append(t[ii][0]+','+t[ii][1])
+            
+    common_coordinates = reference_coordinates
+    
+    if common_coordinates:
+        # Find postition of common_coordinates in each 2D map: coordinates
+        data_coordinates = []
+        for ii in range(n_angles):
+            t = []
+            for coordinates in common_coordinates:
+                t.append(shifted_coordinates[ii].index(coordinates))
+            data_coordinates.append(t)
+
+        c_list = []
+        for ii in range(len(common_coordinates)):    
+            t = common_coordinates[ii].split(',')
+            c_list.append([int(float(t[0])),int(float(t[1]))])    
+        c_list = np.array(c_list)
+
+        # Size of the common scan range
+        n_vertical_new = np.max(c_list[:,0])-np.min(c_list[:,0])+1
+        n_horizontal_new = np.max(c_list[:,1])-np.min(c_list[:,1])+1
+    else:
+        ValueError
+        
+    return data_coordinates, n_vertical_new, n_horizontal_new
+    
 def roll_2d_frame(frame, horizontal_shift, vertical_shift):
     frame_roll = frame.copy()
     frame_roll = np.roll(frame_roll, -vertical_shift, axis = 0)    # Positive y rolls up
@@ -186,33 +245,33 @@ def grid_bcdi_labframe(
     )
 
     max_z = interp_data.sum(axis=0).max()
-    # fig, _, _ = gu.contour_slices(
-    #     interp_data,
-    #    (qx, qz, qy),
-    #    sum_frames=True,
-    #    title="Regridded data",
-    #    levels=np.linspace(0, np.ceil(np.log10(max_z)), 150, endpoint=True),
-    #    plot_colorbar=True,
-    #    scale="log",
-    #    is_orthogonal=True,
-    #    reciprocal_space=True,
-    #    cmap=cmap,
-    #)
+    fig, _, _ = gu.contour_slices(
+        interp_data,
+       (qx, qz, qy),
+       sum_frames=True,
+       title="Regridded data",
+       levels=np.linspace(0, np.ceil(np.log10(max_z)), 150, endpoint=True),
+       plot_colorbar=True,
+       scale="log",
+       is_orthogonal=True,
+       reciprocal_space=True,
+       cmap=cmap,
+    )
     # fig.savefig(detector.savedir + string + "sum" + plot_comment)
     # plt.close(fig)
 
-#     fig, _, _ = gu.contour_slices(
-#         interp_data,
-#         (qx, qz, qy),
-#         sum_frames=False,
-#         title="Regridded data",
-#         levels=np.linspace(0, np.ceil(np.log10(interp_data.max())), 150, endpoint=True),
-#         plot_colorbar=True,
-#         scale="log",
-#         is_orthogonal=True,
-#         reciprocal_space=True,
-#         cmap=cmap,
-#     )
+    # fig, _, _ = gu.contour_slices(
+    #     interp_data,
+    #     (qx, qz, qy),
+    #     sum_frames=False,
+    #     title="Regridded data",
+    #     levels=np.linspace(0, np.ceil(np.log10(interp_data.max())), 150, endpoint=True),
+    #     plot_colorbar=True,
+    #     scale="log",
+    #     is_orthogonal=True,
+    #     reciprocal_space=True,
+    #     cmap=cmap,
+    # )
 #     fig.savefig(detector.savedir + string + "central" + plot_comment)
 #     plt.close(fig)
 
