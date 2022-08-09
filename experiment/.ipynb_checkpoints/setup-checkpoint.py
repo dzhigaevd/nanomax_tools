@@ -1890,8 +1890,8 @@ class Setup:
         if nb_arrays == 1:
             output_arrays = output_arrays[0]  # return the array instead of the tuple
         return output_arrays, voxel_size, transfer_matrix
-
-    def ortho_reciprocal(
+#####################################
+    def ortho_reciprocal_backup(
         self,
         arrays,
         fill_value=0,
@@ -2291,6 +2291,347 @@ class Setup:
             output_arrays = output_arrays[0]  # return the array instead of the tuple
         return output_arrays, (qx, qz, qy), transfer_matrix
 
+def ortho_reciprocal(
+        self,
+        arrays,
+        fill_value=0,
+        align_q=False,
+        reference_axis=(1, 0, 0),
+        verbose=True,
+        debugging=False,
+        **kwargs,
+    ):
+        """
+        Geometrical transformation in reciprocal (Fourier) space.
+
+        Interpolate arrays in the orthogonal laboratory frame (z/qx downstream,
+        y/qz vertical up, x/qy outboard) or crystal frame (q aligned along one array
+        axis). The ouput shape will be increased in order to keep the same range in q
+        in each direction. The sampling in q is defined as the norm of the rows of the
+        transformation matrix.
+
+        :param arrays: tuple of 3D arrays of the same shape (e.g.: reciprocal space
+         diffraction pattern and mask), in the detector frame
+        :param fill_value: tuple of real numbers, fill_value parameter for the
+         RegularGridInterpolator, same length as the number of arrays
+        :param align_q: boolean, if True the data will be rotated such that q is along
+         reference_axis, and q values will be calculated in the pseudo crystal frame.
+        :param reference_axis: 3D vector along which q will be aligned, expressed in
+         an orthonormal frame x y z
+        :param verbose: True to have printed comments
+        :param debugging: tuple of booleans of the same length as the number of
+         input arrays, True to show plots before and after interpolation
+        :param kwargs:
+
+         - 'title': tuple of strings, titles for the debugging plots, same length as
+           the number of arrays
+         - 'scale': tuple of strings (either 'linear' or 'log'), scale for
+           the debugging plots, same length as the number of arrays
+         - width_z: size of the area to plot in z (axis 0), centered on
+           the middle of the initial array
+         - width_y: size of the area to plot in y (axis 1), centered on
+           the middle of the initial array
+         - width_x: size of the area to plot in x (axis 2), centered on
+           the middle of the initial array
+
+        :return:
+
+         - an array (if a single array was provided) or a tuple of arrays interpolated
+           on an orthogonal grid (same length as the number of input arrays)
+         - a tuple of three 1D vectors of q values (qx, qz, qy)
+         - a numpy array of shape (3, 3): transformation matrix from the detector
+           frame to the laboratory/crystal frame
+
+        """
+        valid.valid_ndarray(arrays, ndim=3)
+        nb_arrays = len(arrays)
+        nbz, nby, nbx = arrays[0].shape
+
+        #########################
+        # check and load kwargs #
+        #########################
+        valid.valid_kwargs(
+            kwargs=kwargs,
+            allowed_kwargs={"title", "scale", "width_z", "width_y", "width_x"},
+            name="kwargs",
+        )
+        title = kwargs.get("title", ("Object",) * nb_arrays)
+        if isinstance(title, str):
+            title = (title,) * nb_arrays
+        valid.valid_container(
+            title,
+            container_types=(tuple, list),
+            length=nb_arrays,
+            item_types=str,
+            name="title",
+        )
+        scale = kwargs.get("scale", ("log",) * nb_arrays)
+        if isinstance(scale, str):
+            scale = (scale,) * nb_arrays
+        valid.valid_container(
+            scale, container_types=(tuple, list), length=nb_arrays, name="scale"
+        )
+        if any(val not in {"log", "linear"} for val in scale):
+            raise ValueError("scale should be either 'log' or 'linear'")
+
+        width_z = kwargs.get("width_z")
+        valid.valid_item(
+            value=width_z,
+            allowed_types=int,
+            min_excluded=0,
+            allow_none=True,
+            name="width_z",
+        )
+        width_y = kwargs.get("width_y")
+        valid.valid_item(
+            value=width_y,
+            allowed_types=int,
+            min_excluded=0,
+            allow_none=True,
+            name="width_y",
+        )
+        width_x = kwargs.get("width_x")
+        valid.valid_item(
+            value=width_x,
+            allowed_types=int,
+            min_excluded=0,
+            allow_none=True,
+            name="width_x",
+        )
+
+        #########################
+        # check some parameters #
+        #########################
+        if isinstance(fill_value, Real):
+            fill_value = (fill_value,) * nb_arrays
+        valid.valid_container(
+            fill_value,
+            container_types=(tuple, list, np.ndarray),
+            length=nb_arrays,
+            item_types=Real,
+            name="fill_value",
+        )
+        if isinstance(debugging, bool):
+            debugging = (debugging,) * nb_arrays
+        valid.valid_container(
+            debugging,
+            container_types=(tuple, list),
+            length=nb_arrays,
+            item_types=bool,
+            name="debugging",
+        )
+        valid.valid_item(align_q, allowed_types=bool, name="align_q")
+        valid.valid_container(
+            reference_axis,
+            container_types=(tuple, list, np.ndarray),
+            length=3,
+            item_types=Real,
+            name="reference_axis",
+        )
+        reference_axis = np.array(reference_axis)
+
+        ##########################################################
+        # calculate the transformation matrix (the unit is 1/nm) #
+        ##########################################################
+        transfer_matrix, q_offset = self.transformation_bcdi(
+            array_shape=(nbz, nby, nbx),
+            tilt_angle=self.tilt_angle * self.detector.preprocessing_binning[0],
+            direct_space=False,
+            verbose=verbose,
+            pixel_x=self.detector.pixelsize_x,
+            pixel_y=self.detector.pixelsize_y,
+        )
+
+        # the voxel size in q in the laboratory frame
+        # is given by the rows of the transformation matrix
+        # (the unit is 1/nm)
+        dq_along_x = np.linalg.norm(transfer_matrix[0, :])  # along x outboard
+        dq_along_y = np.linalg.norm(transfer_matrix[1, :])  # along y vertical up
+        dq_along_z = np.linalg.norm(transfer_matrix[2, :])  # along z downstream
+
+        ################################################
+        # find the shape of the output array that fits #
+        # the extent of the data after transformation  #
+        ################################################
+
+        # calculate the q coordinates of the data points in the laboratory frame
+        myz, myy, myx = np.meshgrid(
+            np.arange(-nbz // 2, nbz // 2, 1),
+            np.arange(-nby // 2, nby // 2, 1),
+            np.arange(-nbx // 2, nbx // 2, 1),
+            indexing="ij",
+        )
+
+        q_along_x = (
+            transfer_matrix[0, 0] * myx
+            + transfer_matrix[0, 1] * myy
+            + transfer_matrix[0, 2] * myz
+        )
+        q_along_y = (
+            transfer_matrix[1, 0] * myx
+            + transfer_matrix[1, 1] * myy
+            + transfer_matrix[1, 2] * myz
+        )
+        q_along_z = (
+            transfer_matrix[2, 0] * myx
+            + transfer_matrix[2, 1] * myy
+            + transfer_matrix[2, 2] * myz
+        )
+        if verbose:
+            self.logger.info(
+                "Interpolating:"
+                f"\n\tSampling in q in the laboratory frame (z*, y*, x*):    "
+                f"({dq_along_z:.5f} 1/nm, {dq_along_y:.5f} 1/nm, {dq_along_x:.5f} 1/nm)"
+            )
+        # these q values are not equally spaced, we just extract the q extent from them
+        nx_output = int(np.rint((q_along_x.max() - q_along_x.min()) / dq_along_x))
+        ny_output = int(np.rint((q_along_y.max() - q_along_y.min()) / dq_along_y))
+        nz_output = int(np.rint((q_along_z.max() - q_along_z.min()) / dq_along_z))
+
+        if align_q:
+            #######################################################################
+            # find the shape of the output array that fits the extent of the data #
+            # after rotating further these q values in a pseudo crystal frame     #
+            #######################################################################
+            # the center of mass of the diffraction
+            # should be in the center of the array!
+            q_along_z_com = (
+                q_along_z[nbz // 2, nby // 2, nbx // 2] + q_offset[2]
+            )  # q_offset in the order xyz
+            q_along_y_com = q_along_y[nbz // 2, nby // 2, nbx // 2] + q_offset[1]
+            q_along_x_com = q_along_x[nbz // 2, nby // 2, nbx // 2] + q_offset[0]
+            qnorm = np.linalg.norm(
+                np.array([q_along_x_com, q_along_y_com, q_along_z_com])
+            )  # in 1/A
+            if verbose:
+                self.logger.info(f"Aligning Q along {reference_axis} (x,y,z)")
+
+            # calculate the rotation matrix from the crystal frame
+            # to the laboratory frame
+            # (inverse rotation to have reference_axis along q)
+            rotation_matrix = util.rotation_matrix_3d(
+                axis_to_align=reference_axis,
+                reference_axis=np.array([q_along_x_com, q_along_y_com, q_along_z_com])
+                / qnorm,
+            )
+
+            # calculate the full transfer matrix
+            # including the rotation into the crystal frame
+            transfer_matrix = np.matmul(rotation_matrix, transfer_matrix)
+
+            # the voxel size in q in the laboratory frame
+            # is given by the rows of the transformation matrix
+            # (the unit is 1/nm)
+            dq_along_x = np.linalg.norm(transfer_matrix[0, :])  # along x outboard
+            dq_along_y = np.linalg.norm(transfer_matrix[1, :])  # along y vertical up
+            dq_along_z = np.linalg.norm(transfer_matrix[2, :])  # along z downstream
+
+            # calculate the new offset in the crystal frame
+            # (inverse rotation to have qz along q)
+            offset_crystal = util.rotate_vector(
+                vectors=q_offset,
+                axis_to_align=reference_axis,
+                reference_axis=np.array([q_along_x_com, q_along_y_com, q_along_z_com])
+                / qnorm,
+            )
+            q_offset = offset_crystal[::-1]  # offset_crystal is in the order z, y, x
+
+            # calculate the q coordinates of the data points in the crystal frame
+            q_along_x = (
+                transfer_matrix[0, 0] * myx
+                + transfer_matrix[0, 1] * myy
+                + transfer_matrix[0, 2] * myz
+            )
+            q_along_y = (
+                transfer_matrix[1, 0] * myx
+                + transfer_matrix[1, 1] * myy
+                + transfer_matrix[1, 2] * myz
+            )
+            q_along_z = (
+                transfer_matrix[2, 0] * myx
+                + transfer_matrix[2, 1] * myy
+                + transfer_matrix[2, 2] * myz
+            )
+
+            # these q values are not equally spaced,
+            # we just extract the q extent from them
+            nx_output = int(np.rint((q_along_x.max() - q_along_x.min()) / dq_along_x))
+            ny_output = int(np.rint((q_along_y.max() - q_along_y.min()) / dq_along_y))
+            nz_output = int(np.rint((q_along_z.max() - q_along_z.min()) / dq_along_z))
+
+            if verbose:
+                self.logger.info(
+                    f"Sampling in q in the crystal frame (axis 0, axis 1, axis 2):  "
+                    f"({dq_along_z:.5f} 1/nm,"
+                    f" {dq_along_y:.5f} 1/nm,"
+                    f" {dq_along_x:.5f} 1/nm)"
+                )
+
+        ##########################################################
+        # crop the output shape in order to fit FFT requirements #
+        ##########################################################
+        nz_output, ny_output, nx_output = util.smaller_primes(
+            (nz_output, ny_output, nx_output), maxprime=7, required_dividers=(2,)
+        )
+        if verbose:
+            self.logger.info(
+                f"Initial shape = ({nbz},{nby},{nbx})\n"
+                f"Output shape  = ({nz_output},{ny_output},{nx_output})"
+                f" (satisfying FFT shape requirements)"
+            )
+
+        ########################################################
+        # define the interpolation qx qz qy 1D vectors in 1/nm #
+        # the reference being the center of the array          #
+        ########################################################
+        # the usual frame is used for q values:
+        # qx downstream, qz vertical up, qy outboard
+        # this assumes that the center of mass of the diffraction pattern
+        # was at the center of the array
+        qx = np.arange(-nz_output // 2, nz_output // 2, 1) * dq_along_z
+        # along z downstream
+        qz = np.arange(-ny_output // 2, ny_output // 2, 1) * dq_along_y
+        # along y vertical up
+        qy = np.arange(-nx_output // 2, nx_output // 2, 1) * dq_along_x
+        # along x outboard
+
+            if debugging[idx]:
+                gu.multislices_plot(
+                    abs(array),
+                    sum_frames=True,
+                    scale=scale,
+                    plot_colorbar=True,
+                    width_z=width_z,
+                    width_y=width_y,
+                    width_x=width_x,
+                    is_orthogonal=False,
+                    reciprocal_space=True,
+                    vmin=0,
+                    title=title[idx] + " in detector frame",
+                )
+                gu.multislices_plot(
+                    abs(ortho_array),
+                    sum_frames=True,
+                    scale=scale[idx],
+                    plot_colorbar=True,
+                    width_z=width_z,
+                    width_y=width_y,
+                    width_x=width_x,
+                    is_orthogonal=True,
+                    reciprocal_space=True,
+                    vmin=0,
+                    title=title[idx] + " in the orthogonal frame",
+                )
+
+        # add the offset due to the detector angles
+        # to qx qz qy vectors, convert them to 1/A
+        # the offset components are in the order (x/qy, y/qz, z/qx)
+        qx = (qx + q_offset[2]) / 10  # along z downstream
+        qz = (qz + q_offset[1]) / 10  # along y vertical up
+        qy = (qy + q_offset[0]) / 10  # along x outboard
+
+        return (q_along_x, q_along_z, q_along_y)
+    
     def orthogonalize_vector(
         self, vector, array_shape, tilt_angle, pixel_x, pixel_y, verbose=False
     ):

@@ -10,6 +10,30 @@ import hdf5plugin
 import h5py
 import numpy as np
 
+def get_scan_parameters(command):
+    """
+    Parse the command from the beamline and return number of points in the scan, orientation of the scan, and range in real space
+    """
+    coordinate_to_direction = {
+    'sx': 'h',
+    'sy': 'v',
+    'sz': 'b'}
+    # Parse scan command assuming it is the same from start_scan_number to end_scan_number: should be correct
+    if command[0] == 'npointflyscan':
+        fast_axis = command[1]
+        fast_axis_range = [float(command[2]),float(command[3])]
+        fast_axis_points = int(command[4])+1
+
+        slow_axis = command[5]
+        slow_axis_range = [float(command[6]),float(command[7])]
+        slow_axis_points = int(command[8])+1
+    else:
+        print('Unknown command!')
+    
+    scan_orientation = coordinate_to_direction[fast_axis]+coordinate_to_direction[slow_axis]
+    
+    return fast_axis_points, slow_axis_points, fast_axis_range, slow_axis_range, scan_orientation
+
 def read_data_meta(path):
     h5file = h5py.File(path,'r')
     command = str(h5file['entry']['description'][()])[3:-2] # Reading only useful symbols
@@ -61,7 +85,8 @@ def read_data_meta(path):
             rocking_angles = []
             rocking_motor = []
             pass
-
+        
+    h5file.close()
     return command, motor_positions, rocking_motor, rocking_angles, scan_position_x, scan_position_y, scan_position_z, incoming_intensity
 
 def read_data_merlin(data_path,roi_xrd=None,point_list=None):
@@ -73,6 +98,8 @@ def read_data_merlin(data_path,roi_xrd=None,point_list=None):
             data = h5file['entry']['measurement']['merlin']['frames'][:,roi_xrd[0]:roi_xrd[1],roi_xrd[2]:roi_xrd[3]]       
     else:
         data = h5file['entry']['measurement']['merlin']['frames'][()]
+    
+    h5file.close()
     return data
 
 def read_data_xspress3(data_path,roi=None):
@@ -84,6 +111,8 @@ def read_data_xspress3(data_path,roi=None):
     else:
         data = h5file['entry']['measurement']['xspress3']['frames'][:,module,:]
     print('Use XRF module #'+str(module))
+    h5file.close()
+    
     return data
 
 def read_mask(data_path,roi):

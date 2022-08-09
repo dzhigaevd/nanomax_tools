@@ -1,8 +1,20 @@
-# Conversion of MATLAB code to python to get q-space of data
-# output q-coordinates for each pixel
+%% Select the rocking curve
 
-# Select the rocking curve
-data = 
+code_location = '/home/dzhigd/Software/nanomax_preprocessing';
+
+% add class definitions and functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+addpath(fullfile(code_location,'functions'));
+addpath(fullfile(code_location,'functions/openFunctions'));
+addpath(fullfile(code_location,'classDef'));
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%
+clc
+clear;
+close all;
+scan_number = 442;
+
+scan_path = sprintf('/home/dzhigd/work/projects/CsPbBr3_NC_BCDI_NanoMAX/data/sample0609_%d/scan_%06d_merlin.mat',scan_number,scan_number);
 load(scan_path);
 
 % Vertical coordinate on the detector is 1st

@@ -8,6 +8,9 @@ Created on Fri Oct 23 23:43:44 2020
 from scipy import ndimage, interpolate
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
+import plotly.express as px
+import plotly.graph_objects as go
 
 class IndexTracker:
     def __init__(self, ax, data, axis):
@@ -51,7 +54,6 @@ class IndexTracker:
         self.ax.set_title('Slice %d along axis %d ' % (self.ind, self.scroll_axis))
         
         self.im.axes.figure.canvas.draw()        
-
 
 def scroll_data(data, axis=None, colormap=None):
     fig, ax = plt.subplots(1, 1)    
@@ -108,19 +110,68 @@ def show_q_space_projections(qx,qy,qz,data):
     plt.figure(num=3)
     plt.imshow(np.sum(qspace_interpolated,axis=2))
     
-def imagesc(image, cmap=None, xlabel=None, ylabel=None, title=None):
-    plt.figure()
-    plt.imshow(image)    
-    if cmap!=None:
-        plt.set_cmap(cmap)
-    else:
-        plt.set_cmap('turbo') 
+def imagesc(*args, cmap='turbo', xlabel=None, ylabel=None, title=None, levels = 300):
+    if len(args) == 1:
+        plt.figure()
+        plt.imshow(args[0],cmap=cmap) 
+        plt.colorbar()
+        plt.show()
         
-    if xlabel!=None:
-        plt.xlabel(xlabel)    
-    if ylabel!=None:
-        plt.ylabel(ylabel)        
-    plt.colorbar()    
-    if title!=None:
-        plt.title(title)        
-    plt.show()
+        if title!=None:
+            plt.title(title)        
+
+        if xlabel!=None:
+            plt.xlabel(xlabel)
+
+        if ylabel!=None:
+            plt.ylabel(ylabel)    
+    
+    elif len(args) == 3:
+        fig, ax = plt.subplots(nrows=1, ncols=1)
+        display = ax.contourf(args[0],args[1],args[2],levels)
+    
+        if cmap!=None:
+            display.set_cmap(cmap)
+        else:
+            display.set_cmap('turbo') 
+
+        if xlabel!=None:
+            ax.set_xlabel(xlabel)
+
+        if ylabel!=None:
+            ax.set_ylabel(ylabel)    
+
+        cbar = fig.colorbar(display)
+
+        if title!=None:
+            ax.title(title)        
+
+        ax.set_aspect("equal")
+        
+def imagesc_plotly(*args, cmap='turbo', xlabel=None, ylabel=None, title=None):
+    # fig = px.imshow(args[0], color_continuous_scale=cmap, origin='lower')
+    fig = go.Figure(data=go.Heatmap(
+          x = args[0],
+          y = args[1],
+          z = args[2],
+          type = 'heatmap',
+          colorscale = cmap))
+    fig.show()
+    
+def scatter3_plotly(x,y,z,values):
+    fig = go.Figure(data=[go.Scatter3d(
+        x=x,
+        y=y,
+        z=z,
+        mode='markers',
+        marker=dict(
+            size=12,
+            color=values,                # set color to an array/list of desired values
+            colorscale='Turbo',   # choose a colorscale
+            opacity=0.8
+        )
+    )])
+
+    # tight layout
+    fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
+    fig.show()
