@@ -11,6 +11,9 @@ import numpy as np
 from bcdi.graph import graph_utils as gu
 from bcdi.utils import utilities as util
 import sys
+from scipy.interpolate import NearestNDInterpolator
+# from scipy.interpolate import LinearNDInterpolator
+import math
 
 sys.path.append('/home/dzhigd/Software/')
 import python_tools.numpy_extension.math as nem
@@ -127,16 +130,16 @@ def cross_corr(data1, data2):
     return max_corr, argmax_corr - shift
 
 
-def COM_voxels_sparse(data, Qx, Qz, Qy ):
+def COM_voxels_sparse(data, Qb, Qv, Qh ):
     """
     calculates center of mass 
     """
     # center of mass calculation in reciprocal space with the meshgrids
-    COM_qx = np.sum(data.flatten()* Qx.flatten())/np.sum(data.flatten())
-    COM_qz = np.sum(data.flatten()* Qz.flatten())/np.sum(data.flatten())
-    COM_qy = np.sum(data.flatten()* Qy.flatten())/np.sum(data.flatten())
+    COM_qh = np.sum(data.flatten()* Qh.flatten())/np.sum(data.flatten())
+    COM_qb = np.sum(data.flatten()* Qb.flatten())/np.sum(data.flatten())
+    COM_qv = np.sum(data.flatten()* Qv.flatten())/np.sum(data.flatten())
 
-    return COM_qx, COM_qz, COM_qy
+    return COM_qb, COM_qv, COM_qh
 
 # def COM_voxels_reciproc(data, Qx, Qz, Qy ):
 #     """
@@ -152,7 +155,7 @@ def COM_voxels_sparse(data, Qx, Qz, Qy ):
 #     return COM_qx, COM_qz, COM_qy
 
 
-def get_q_coordinates(setup,number_of_scans,roi_xrd=None):
+def get_q_coordinates(setup,number_of_scans,roi_xrd=None,gonphi_correction = 0, chi_correction = 0):
     """
     Calculate q-space coordinates for each pixel in the rocking curve dataset
     
@@ -202,7 +205,7 @@ def get_q_coordinates(setup,number_of_scans,roi_xrd=None):
 
     hd = (hd+number_of_pixels_horizontal/2-direct_beam[1])*detector_pitch;
     vd = (vd+number_of_pixels_vertical/2-direct_beam[0])*detector_pitch;
-    zd = np.ones(vd.shape)*radius;
+    bd = np.ones(vd.shape)*radius # bd for beam direction
 
     # Add functionality to image display
     # gu.imagesc(hd[0,:],vd[:,0],(np.sum(data,0)));
@@ -211,20 +214,20 @@ def get_q_coordinates(setup,number_of_scans,roi_xrd=None):
     # data = data[roi_xrd[0]:roi_xrd[1],roi_xrd[2]:roi_xrd[3],:]
     hd = hd[roi_xrd[0]:roi_xrd[1],roi_xrd[2]:roi_xrd[3]]
     vd = vd[roi_xrd[0]:roi_xrd[1],roi_xrd[2]:roi_xrd[3]]
-    zd = zd[roi_xrd[0]:roi_xrd[1],roi_xrd[2]:roi_xrd[3]]
+    bd = bd[roi_xrd[0]:roi_xrd[1],roi_xrd[2]:roi_xrd[3]]
     
     number_of_pixels_horizontal = roi_xrd[3]-roi_xrd[2]
     number_of_pixels_vertical = roi_xrd[1]-roi_xrd[0]
     
-    d = np.array([hd.flatten(),vd.flatten(),zd.flatten()])
+    d = np.array([hd.flatten(),vd.flatten(),bd.flatten()])
 
     r = np.sqrt(np.sum(d**2,0))
 
     hq = k*(d[0,:]/r)
     vq = k*(d[1,:]/r)
-    zq = k*(1-d[2,:]/r)
+    bq = k*(1-d[2,:]/r)
 
-    q = [hq,vq,zq]
+    q = [hq,vq,bq]
 
     # Sample orientation matrix. Bounds the sample crystal with the laboratory frame
     # Angles alpha beta gamma were manually adjusted so that known peaks 
@@ -240,11 +243,11 @@ def get_q_coordinates(setup,number_of_scans,roi_xrd=None):
                   [0,               1,  0],
                   [-nem.sind(gamma), 0,  nem.cosd(gamma)]])
 
-    Rz = np.array([[nem.cosd(0), -nem.sind(0), 0], # detector rotation around beam axis 
+    Rb = np.array([[nem.cosd(0), -nem.sind(0), 0], # detector rotation around beam axis 
                   [nem.sind(0),  nem.cosd(0), 0],
                   [0,           0,          1]])
 
-    U = Rh@Rv@Rz
+    U = Rh@Rv@Rb
     qR = (U@q) # correct so far in real space
 
     # Initial coordinate of ki
@@ -262,8 +265,14 @@ def get_q_coordinates(setup,number_of_scans,roi_xrd=None):
 
     # Gonphi correction
     sample_alpha_correction = 0 # Qx+Qz 
-    sample_beta_correction  = 0 # Qz should be positive
-    sample_gamma_correction = -gonphi_increment*number_of_scans/2 # Qz
+    
+    # if gonphi_correction != None:
+    sample_beta_correction = -gonphi_increment*number_of_scans/2+gonphi_correction # Qz
+    # else:
+    #     sample_beta_correction = -gonphi_increment*number_of_scans/2
+    
+    sample_gamma_correction  = chi_correction # Qz 
+    
     dphi = 0.1
 
     q_values = []
@@ -278,11 +287,11 @@ def get_q_coordinates(setup,number_of_scans,roi_xrd=None):
                         [0,                                                        1,  0],
                         [-nem.sind(-gamma/2 + gonphi_increment*(ii-1)+sample_beta_correction), 0,  nem.cosd(-gamma/2 + gonphi_increment*(ii-1)+sample_beta_correction)]])
 
-        Rsz = np.array([[nem.cosd(sample_gamma_correction), -nem.sind(sample_gamma_correction), 0], 
+        Rsb = np.array([[nem.cosd(sample_gamma_correction), -nem.sind(sample_gamma_correction), 0], 
                         [nem.sind(sample_gamma_correction),  nem.cosd(sample_gamma_correction), 0],
                         [0,                                  0,                                 1]])
 
-        Rs = Rsh@Rsv@Rsz
+        Rs = Rsh@Rsv@Rsb
 
         # Sample coordinate system: accosiated with the ki
         q_values.append(Rs@QLab)
@@ -291,7 +300,35 @@ def get_q_coordinates(setup,number_of_scans,roi_xrd=None):
     
     return q_values
 
+def grid_q_space_data(setup,data,qb,qv,qh,scale_coefficient = 1):
+    if setup.detector.pixelsize_x == setup.detector.pixelsize_y:
+        dqh = scale_coefficient*(2*np.pi*setup.detector.pixelsize_x/(setup.distance*setup.wavelength))
+        dqv = scale_coefficient*(2*np.pi*setup.detector.pixelsize_x/(setup.distance*setup.wavelength))
+        dqb = scale_coefficient*(2*np.pi*setup.detector.pixelsize_x/(setup.distance*setup.wavelength))
+    
+    # qb = q_values[:,0,:].flatten()
+    # qv = q_values[:,1,:].flatten()
+    # qh = q_values[:,2,:].flatten()
+    qb = qb.flatten()
+    qv = qv.flatten()
+    qh = qh.flatten()
+    
+    qrb,qrv,qrh = np.meshgrid(np.arange(min(qb.flatten()),max(qb.flatten()),dqb), \
+                              np.arange(min(qv.flatten()),max(qv.flatten()),dqv), \
+                              np.arange(min(qh.flatten()),max(qh.flatten()),dqh))    
+    # interpolate Q   
+    a = list(zip(qb,qv,qh))
+    # a = np.transpose(a,(0,2,1))
+    print(np.shape(a))
+    interp = NearestNDInterpolator(a,data.flatten())
+    data_interpolated = interp(qrb, qrv, qrh)                         
+    # data_interpolated[math.isnan(data_interpolated)] = 0
+    
+    return qrb,qrv,qrh, data_interpolated
+#     scan.q_space.data(:,:,:) = abs(lab_data);
 
+
+########################################
 # adapted from bcdi package by carnisj #
 def grid_bcdi_labframe_backup(
     data,

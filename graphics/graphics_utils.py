@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import plotly.express as px
 import plotly.graph_objects as go
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 class IndexTracker:
     def __init__(self, ax, data, axis):
@@ -128,8 +129,12 @@ def imagesc(*args, cmap='turbo', xlabel=None, ylabel=None, title=None, levels = 
     
     elif len(args) == 3:
         fig, ax = plt.subplots(nrows=1, ncols=1)
-        display = ax.contourf(args[0],args[1],args[2],levels)
-    
+        
+        hv = args[0]
+        vv = args[1]
+        
+        display = ax.imshow(args[2],extent=(np.min(hv), np.max(hv), np.min(vv), np.max(vv)))
+        
         if cmap!=None:
             display.set_cmap(cmap)
         else:
@@ -147,7 +152,65 @@ def imagesc(*args, cmap='turbo', xlabel=None, ylabel=None, title=None, levels = 
             ax.title(title)        
 
         ax.set_aspect("equal")
-        
+
+def imagesc_central_slices(*args, cmap='turbo', xlabel=None, ylabel=None, title=None, levels = 300):
+    fig, (ax1,ax2,ax3) = plt.subplots(nrows=1, ncols=3)
+    image = args[0]
+    ax1.imshow(image[int(image.shape[0]/2),:,:])
+    ax2.imshow(image[:,int(image.shape[1]/2),:])
+    ax3.imshow(image[:,:,int(image.shape[2]/2)])
+    
+def imagesc_ortho_projections(*args, cmap=None, xlabel=None, ylabel=None, title=None, levels = 300):
+    def set_cmap_ortho(ax1,ax2,ax3,d1,d2,d3,cmap):
+        if cmap!=None:
+            d1 = ax1.set_cmap(cmap)
+            d2 = ax2.set_cmap(cmap)
+            d3 = ax3.set_cmap(cmap)
+        else:
+            d1.set_cmap('turbo')
+            d2.set_cmap('turbo')
+            d3.set_cmap('turbo')
+            
+    if len(args) == 1:
+        fig, (ax1,ax2,ax3) = plt.subplots(nrows=1, ncols=3)
+        image = args[0]
+        d1 = ax1.imshow(np.sum(image,0))
+        d2 = ax2.imshow(np.sum(image,1))
+        d3 = ax3.imshow(np.sum(image,2))                
+        set_cmap_ortho(ax1,ax2,ax3,d1,d2,d3,cmap)
+        if title!=None:
+            ax.title(title)    
+
+    elif len(args) == 4:
+        fig, (ax1,ax2,ax3) = plt.subplots(ncols=3)
+        # fig.subplots_adjust(left=0.02, bottom=0.06, right=0.95, top=0.94, wspace=0.05)
+        bv = args[0]*1e-10
+        vv = args[1]*1e-10 
+        hv = args[2]*1e-10 
+
+        d1 = ax1.imshow(np.sum(args[3],0),extent=(np.min(hv), np.max(hv), np.min(bv), np.max(bv)))
+        d2 = ax2.imshow(np.sum(args[3],1),extent=(np.min(hv), np.max(hv), np.min(vv), np.max(vv)))
+        d3 = ax3.imshow(np.sum(args[3],2),extent=(np.min(vv), np.max(vv), np.min(bv), np.max(bv)))                
+                
+#         if xlabel!=None:
+#             ax.set_xlabel(xlabel)
+
+#         if ylabel!=None:
+#             ax.set_ylabel(ylabel)
+    set_cmap_ortho(ax1,ax2,ax3,d1,d2,d3,cmap)
+    ax1.set_aspect('auto')
+    ax2.set_aspect('auto')
+    ax3.set_aspect('auto')
+    plt.colorbar(d1,ax=ax1)
+    plt.colorbar(d2,ax=ax2)
+    plt.colorbar(d3,ax=ax3)
+    plt.show()
+    # cb = plt.colorbar(d1, label = 'Integrated intensity')    
+
+#         if title!=None:
+#             ax.title(title)        
+
+        # ax.set_aspect("equal")        
 def imagesc_plotly(*args, cmap='turbo', xlabel=None, ylabel=None, title=None):
     # fig = px.imshow(args[0], color_continuous_scale=cmap, origin='lower')
     fig = go.Figure(data=go.Heatmap(
