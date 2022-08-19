@@ -32,7 +32,7 @@ class IndexTracker:
         elif self.scroll_axis == 2:
             rows, cols, self.slices = data.shape
             self.im = ax.imshow(self.data[:, :, self.ind])
-                
+        self.im.set_cmap('turbo')        
         # plt.colorbar(self.im, self.ax)
         self.update()
 
@@ -53,7 +53,7 @@ class IndexTracker:
             self.im.set_data(self.data[:, :, self.ind])
             
         self.ax.set_title('Slice %d along axis %d ' % (self.ind, self.scroll_axis))
-        
+        self.im.set_cmap('turbo')
         self.im.axes.figure.canvas.draw()        
 
 def scroll_data(data, axis=None, colormap=None):
@@ -128,12 +128,18 @@ def imagesc(*args, cmap='turbo', xlabel=None, ylabel=None, title=None, levels = 
             plt.ylabel(ylabel)    
     
     elif len(args) == 3:
-        fig, ax = plt.subplots(nrows=1, ncols=1)
+        fig, ax = plt.subplots(ncols=1) # figsize=(10,3)
+        display = ax.imshow(args[2], interpolation='none')
+        
+        # fig, ax = plt.subplots(nrows=1, ncols=1)
         
         hv = args[0]
         vv = args[1]
         
-        display = ax.imshow(args[2],extent=(np.min(hv), np.max(hv), np.min(vv), np.max(vv)))
+        # display = ax.imshow(args[2],extent=(np.min(hv), np.max(hv), np.min(vv), np.max(vv)))
+        tick_interval = 10
+        plt.yticks(range(0,len(vv),tick_interval), np.round(vv[::tick_interval],2))
+        plt.xticks(range(0,len(hv),tick_interval), np.round(hv[::tick_interval],2))
         
         if cmap!=None:
             display.set_cmap(cmap)

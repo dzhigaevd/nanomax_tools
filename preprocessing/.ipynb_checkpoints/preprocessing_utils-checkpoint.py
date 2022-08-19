@@ -8,6 +8,7 @@ Created on Fri Oct 23 15:40:33 2020
 import matplotlib.pyplot as plt
 from bcdi.utils import validation as valid
 import numpy as np
+import cv2
 from bcdi.graph import graph_utils as gu
 from bcdi.utils import utilities as util
 import sys
@@ -18,6 +19,23 @@ import math
 sys.path.append('/home/dzhigd/Software/')
 import python_tools.numpy_extension.math as nem
 
+def get_2d_roi_interactive(image, scale = 1):
+    """
+    interactively selects the roi in the image
+    input: image [ndarray], scale [int] (for better visualization)
+    output: roi [tuple] im(int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2]))
+    """
+    image = image/np.max(image)
+    image = cv2.resize(image, dsize=(image.shape[1]*scale, image.shape[0]*scale), interpolation=cv2.INTER_NEAREST)
+    roi = cv2.selectROI(image)
+    roi = [np.round(value/scale) for value in roi]
+    # debugging plots
+    # image = cv2.resize(im, dsize=(int(im.shape[1]/scale), int(im.shape[0]/scale)), interpolation=cv2.INTER_NEAREST)
+    # imCrop = im[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2])]
+    # gu.imagesc(imCrop)
+    cv2.waitKey(0)
+    return roi
+    
 def get_overlay_coordinates(n_horizontal,n_vertical,shift):
     """This function calculates linear coordinates of the scan-points in the area of overlap between angular positions after calculation of the shift that has to be read from h5 dataset
     Input: 
