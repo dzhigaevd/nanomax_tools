@@ -1,6 +1,18 @@
 # NanoMax Python Tools for Users
 A toolbox for analysis of the data from NanoMax beamline, MAX IV (Sweden)
 
+Dependencies:
+- numpy
+- matplotlib
+- scipy
+- skimage
+- cv2 (https://pypi.org/project/opencv-python/)
+- bcdi
+- sys
+- h5py
+- hdf5plugin
+- os
+
 Download latest Version from Github:
 
 git clone https://github.com/DzhigaevD/nanomax_tools.git
