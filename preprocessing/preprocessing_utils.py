@@ -25,6 +25,7 @@ def get_2d_roi_interactive(image, scale = 1):
     input: image [ndarray], scale [int] (for better visualization)
     output: roi [tuple] im(int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2]))
     """
+    
     image = image/np.max(image)
     image = cv2.resize(image, dsize=(image.shape[1]*scale, image.shape[0]*scale), interpolation=cv2.INTER_NEAREST)
     roi = cv2.selectROI(image)
@@ -34,15 +35,15 @@ def get_2d_roi_interactive(image, scale = 1):
     # imCrop = im[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2])]
     # gu.imagesc(imCrop)
     cv2.waitKey(0)
+    cv2.destroyAllWindows()
     return roi
     
 def get_overlay_coordinates(n_horizontal,n_vertical,shift):
     """This function calculates linear coordinates of the scan-points in the area of overlap between angular positions after calculation of the shift that has to be read from h5 dataset
-    Input: 
-    :retun: size of a new map (vertical, horizontal), list of scan point coordinates to be read from h5 dataset for each shift value
+    :input: size of the array, and shift array with shape (n_angles,2)
+    :return: size of a new map (vertical, horizontal), list of scan point coordinates to be read from h5 dataset for each shift value
     """
     
-    shift.insert(0, [0,0])
     shift = np.array(shift)
     n_angles = len(shift)
     
